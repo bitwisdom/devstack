@@ -16,24 +16,32 @@ if [ -f /devstack-config/php/cli/custom.ini ]; then
 fi
 
 if [ -f /devstack-config/dashboard/env.local ]; then
-  if [ -f /devstack-config/dashboard/env.local ]; then
+  if [ -f /usr/local/src/dashboard/.env.local ]; then
     rm /usr/local/src/dashboard/.env.local
   fi
   ln -sv /devstack-config/dashboard/env.local /usr/local/src/dashboard/.env.local
+  rm -rf /usr/local/src/dashboard/var/*
   cd /usr/local/src/dashboard
   bin/console cache:clear
+  chown -R dev.dev /usr/local/src/dashboard/var
   cd ~
 fi
 
 # Add SSH Keys for Use with Git
-mkdir -p /userdata/dev/.ssh
-mkdir -p /userdata/dev/data/ssh
-/bin/cat /dev/zero | /usr/bin/ssh-keygen -b 2048 -t rsa -f /userdata/dev/ssh/id_rsa -q -N "" >> /dev/null
-if [ -f /devstack-config/ssh/config ]; then
-  cp /devstack-config/ssh/config /userdata/dev/.ssh/config
+if [ ! -f /userdata/dev/data/ssh/id_rsa ]; then
+  mkdir -p /userdata/dev/data/ssh
+  /bin/cat /dev/zero | /usr/bin/ssh-keygen -b 2048 -t rsa -f /userdata/dev/data/ssh/id_rsa -q -N "" -C "dev@devstack" >> /dev/null
+  if [ -f /devstack-config/ssh/config ]; then
+    cp /devstack-config/ssh/config /userdata/dev/data/ssh/config
+  fi
+  chown -R dev.dev /userdata/dev/data/ssh
+  chmod 600 /userdata/dev/data/ssh/config
 fi
+rm -rf /userdata/dev/.ssh
+cp -r /userdata/dev/data/ssh /userdata/dev/.ssh
 chown -R dev.dev /userdata/dev/.ssh
-chmod 600 /userdata/dev/.ssh/config /devstack-config/ssh/config
+chmod -R 700 /userdata/dev/.ssh
+chmod -R 600 /userdata/dev/.ssh/*
 
 # Git Configuration
 GIT_EMAIL=$1
