@@ -1,0 +1,7 @@
+vm/.vagrant
+sites/*
+!sites/index.php
+!sites/.gitkeep
+data/*
+!data/.gitkeep
+config/config.yml

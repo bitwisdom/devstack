@@ -1,0 +1,2 @@
+Host *
+  IdentityFile /home/dev/data/ssh/id_rsa

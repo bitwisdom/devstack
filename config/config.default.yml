@@ -1,0 +1,24 @@
+config:
+  box: bitwisdom/devstack
+  box_version: 0.0.1
+  virtualbox: 
+    memory: 3072
+    cpus: 2 
+  network:
+    hostname: localhost
+    share_type: shared_folders
+    # type: private_network
+    # hostname: devstack.lh
+    # ip: 172.28.128.150
+    # share_type: nfs
+  sites:
+    dir: /userdata/dev/sites
+    host_dir: ../sites/
+  web:
+    port: 8888
+  db:
+    backup: true
+    restore: true
+  git:
+    email: example@example.com
+    name: Example

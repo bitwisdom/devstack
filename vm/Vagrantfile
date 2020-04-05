@@ -1,0 +1,82 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+require 'yaml'
+current_dir    = File.dirname(File.expand_path(__FILE__))
+
+config_default = YAML.load_file("#{current_dir}/../config/config.default.yml")
+conf = config_default['config']
+if File.exist?("#{current_dir}/../config/config.yml")
+  config_local = YAML.load_file("#{current_dir}/../config/config.yml")
+  conf = conf.merge(config_local['config'])
+end
+
+$set_hostname = <<SCRIPT
+hostnamectl set-hostname #{conf['network']['hostname']}
+SCRIPT
+
+Vagrant.configure(2) do |config|
+
+  # SSH Forwarding
+  config.ssh.forward_agent = true
+
+  config.vm.box = conf['box']
+  config.vm.box_version = conf['box_version']
+  config.vm.provider "virtualbox" do |v|
+    v.memory = conf['virtualbox']['memory']
+    v.cpus = conf['virtualbox']['cpus']
+    v.customize ["modifyvm", :id, "--ioapic", "on"]
+    v.customize [ 'modifyvm', :id, '--uartmode1', 'disconnected']
+  end
+
+  # Network
+  if conf['network']['type'] == 'private_network'
+    if (conf['network'].has_key? 'ip')
+      config.vm.network :private_network, ip: conf['network']['ip']
+    else
+      config.vm.network "private_network", type: "dhcp"
+    end
+    config.vm.synced_folder "../config/", "/devstack-config", type: conf['network']['share_type'], mount_options: ['actimeo=1'], create: true
+    config.nfs.map_uid = Process.uid
+    config.nfs.map_gid = Process.gid
+    if (conf['network']['share_type'] == 'nfs' && Vagrant.has_plugin?("vagrant-bindfs"))
+        config.vm.synced_folder "../data/", "/vagrant-data", type: conf['network']['share_type'], mount_options: ['actimeo=1'], create: true
+        config.vm.synced_folder conf['sites']['host_dir'], "/vagrant-sites", type: conf['network']['share_type'], mount_options: ['actimeo=1'], create: true
+        config.bindfs.bind_folder "/vagrant-data", "/home/dev/data"
+        config.bindfs.bind_folder "/vagrant-sites", conf['sites']['dir']
+    else
+        config.vm.synced_folder "../data/", "/home/dev/data", type: conf['network']['share_type'], mount_options: ['actimeo=1'], create: true
+        config.vm.synced_folder conf['sites']['host_dir'], conf['sites']['dir'], type: conf['network']['share_type'], mount_options: ['actimeo=1'], create: true
+    end
+  else
+    config.vm.synced_folder "../data/", "/home/dev/data", owner: "dev", group: "dev", mount_options: ["dmode=775,fmode=775"], create: true
+    config.vm.synced_folder "../config/", "/devstack-config", create: true
+    config.vm.synced_folder conf['sites']['host_dir'], conf['sites']['dir'], owner: "dev", group: "dev", mount_options: ["dmode=775,fmode=775"], create: true
+    config.vm.network :forwarded_port, host: conf['web']['port'], guest: 80
+  end
+
+  # Hostname
+  config.vm.provision "shell", inline: $set_hostname, run: "always"
+
+  config.vm.provision :shell, path: "provision/provision.sh", args: [ conf['git']['email'], conf['git']['name'] ]
+
+  config.trigger.after :up do |trigger|
+    trigger.info = "Configuring dashboard..."
+    trigger.run_remote = {inline:"bash /vagrant/bin/configure_dashboard.sh " + conf['network']['share_type'] + ' ' + conf['network']['hostname']}
+  end
+
+  if conf['db']['backup']
+    config.trigger.before :halt, :destroy do |trigger|
+      trigger.info = "Backing up the database before shutting down the VM..."
+      trigger.run_remote = {inline: "bash /vagrant/bin/db_backup.sh"}
+    end
+  end
+
+  if conf['db']['restore']
+    config.trigger.after :up do |trigger|
+      trigger.info = "Importing database backup..."
+      trigger.run_remote = {inline:"bash /vagrant/bin/db_restore.sh"}
+    end
+  end
+
+end
