@@ -34,7 +34,6 @@ if [ ! -f /userdata/dev/data/ssh/id_rsa ]; then
   if [ -f /devstack-config/ssh/config ]; then
     cp /devstack-config/ssh/config /userdata/dev/data/ssh/config
   fi
-  chown -R dev.dev /userdata/dev/data/ssh
   chmod 600 /userdata/dev/data/ssh/config
 fi
 rm -rf /userdata/dev/.ssh
