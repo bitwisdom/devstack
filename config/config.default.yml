@@ -1,6 +1,6 @@
 config:
   box: bitwisdom/devstack
-  box_version: 0.0.3
+  box_version: 1.0.0
   virtualbox: 
     memory: 3072
     cpus: 2 

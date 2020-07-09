@@ -51,3 +51,5 @@ su - dev -c "git config --global user.name '$GIT_NAME'"
 # Switch to dev user on vagrant ssh
 echo "# Switch to dev user on login
 sudo su dev" >> /home/vagrant/.bashrc
+echo "# Exit when dev exits
+exit" >> /home/vagrant/.bashrc
